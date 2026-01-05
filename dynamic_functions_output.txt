@@ -1,0 +1,23 @@
+LLM生成的动态评估函数:
+==================================================
+
+函数名: ma5_check
+函数代码:
+function(kline_data) { let ma5 = 0; for (let i = 0; i < 5; i++) { if (kline_data.length - 1 - i >= 0) { ma5 += kline_data[kline_data.length - 1 - i]['close']; } } ma5 /= 5; return Math.abs((kline_data[kline_data.length - 1]['close'] - ma5) / ma5 * 100) <= 4; }
+------------------------------
+
+函数名: price_range_check
+函数代码:
+function(kline_data) { let max_price = -Infinity; let min_price = Infinity; for (let i = 0; i < 5; i++) { if (kline_data.length - 1 - i >= 0) { max_price = Math.max(max_price, kline_data[kline_data.length - 1 - i]['close']); min_price = Math.min(min_price, kline_data[kline_data.length - 1 - i]['close']); } } let current_price = kline_data[kline_data.length - 1]['close']; return Math.max(Math.abs(current_price - max_price), Math.abs(current_price - min_price)) / Math.min(max_price, min_price) * 100 <= 4.5; }
+------------------------------
+
+函数名: limit_up_count_check
+函数代码:
+function(kline_data) { let count = 0; for (let i = 0; i < Math.min(60, kline_data.length); i++) { if (kline_data[kline_data.length - 1 - i]['pctChg'] >= 9.9) count++; } return count >= 2; }
+------------------------------
+
+函数名: main_condition
+函数代码:
+function(kline_data) { return ma5_check(kline_data) && price_range_check(kline_data) && limit_up_count_check(kline_data); }
+------------------------------
+==================================================
