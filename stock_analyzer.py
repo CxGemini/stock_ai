@@ -1,9 +1,9 @@
 """
-股票分析器 - 基于LangGraph和MCP的三层架构实现
+股票分析器 - 原生实现的三层架构
 
 架构说明：
 1. 策略转换层：StrategyConverter负责将自然语言策略转换为量化策略
-2. 数据获取层：DataFetcher负责从MCP获取股票列表和K线数据
+2. 数据获取层：DataFetcher负责从原生API获取股票列表和K线数据
 3. 计算分析层：StockAnalyzer负责计算技术指标并筛选股票
 
 主文件仅负责串联这三个层次，不包含具体的实现细节
@@ -16,7 +16,6 @@ import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 # 配置日志
 logging.basicConfig(
@@ -84,18 +83,12 @@ class StockAnalyzer:
     def __init__(self):
         """初始化分析器组件"""
         logger.info("初始化StockAnalyzer组件")
-        # 初始化LangGraph模型
-        self.langgraph_model = ChatOpenAI(
-            model="qwen-turbo",
-            api_key=os.getenv("QWEN_API_KEY"),
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-        )
         
         # 初始化各层次组件
         logger.info("初始化策略转换组件")
         self.strategy_converter = StrategyConverter()
         logger.info("初始化数据获取组件")
-        self.data_fetcher = DataFetcher(self.langgraph_model)
+        self.data_fetcher = DataFetcher()
         
         # 初始化动态计算引擎
         try:

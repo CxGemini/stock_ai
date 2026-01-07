@@ -11,6 +11,7 @@
 import operator
 from typing import Dict, List, Any, Callable
 import json
+import hashlib
 
 # 确保安装了PyExecJS库
 # pip install PyExecJS
@@ -20,6 +21,9 @@ try:
 except ImportError as e:
     EXECJS_AVAILABLE = False
     execjs = None
+
+# 缓存编译后的JavaScript上下文，避免重复编译
+COMPILED_CONTEXT_CACHE = {}
 
 
 class KlineData:
@@ -259,7 +263,16 @@ class DynamicCalculator:
             
             # 编译合并后的所有函数代码
             combined_code = '\n'.join(all_functions_code)
-            ctx = execjs.compile(combined_code)
+            
+            # 使用代码内容的哈希值作为缓存键
+            code_hash = hashlib.md5(combined_code.encode()).hexdigest()
+            
+            # 检查缓存中是否存在编译后的上下文
+            if code_hash in COMPILED_CONTEXT_CACHE:
+                ctx = COMPILED_CONTEXT_CACHE[code_hash]
+            else:
+                ctx = execjs.compile(combined_code)
+                COMPILED_CONTEXT_CACHE[code_hash] = ctx  # 缓存编译后的上下文
             
             # 依次执行每个函数
             for function_name in functions.keys():
@@ -279,128 +292,10 @@ class DynamicCalculator:
         
         return results
 
-
-def demo_dynamic_calculator():
-    """演示动态计算引擎"""
-    
-    # 模拟K线数据 - 包含多个交易日，其中有几个涨停
-    kline_data = [
-        {
-            "date": "2025-10-01",
-            "open": "60.0000",
-            "high": "66.0000", 
-            "low": "60.0000",
-            "close": "66.0000",  # 涨停（10%）
-            "volume": "56360590",
-            "amount": "3839846393.2700",
-            "pctChg": "10.00"
-        },
-        {
-            "date": "2025-10-02", 
-            "open": "66.0000",
-            "high": "67.0000",
-            "low": "65.0000",
-            "close": "66.5000",
-            "volume": "63847643", 
-            "amount": "4363697642.1000",
-            "pctChg": "0.76"
-        },
-        {
-            "date": "2025-10-03",
-            "open": "66.5000",
-            "high": "73.1500", 
-            "low": "66.5000",
-            "close": "73.1500",  # 涨停（10%）
-            "volume": "70000000",
-            "amount": "4920000000.0000",
-            "pctChg": "10.00"
-        },
-        {
-            "date": "2025-10-04", 
-            "open": "73.1500",
-            "high": "75.0000",
-            "low": "72.0000",
-            "close": "74.0000",
-            "volume": "80000000", 
-            "amount": "5920000000.0000",
-            "pctChg": "1.16"
-        },
-        {
-            "date": "2025-10-05",
-            "open": "74.0000",
-            "high": "75.0000", 
-            "low": "73.0000",
-            "close": "73.5000",
-            "volume": "50000000",
-            "amount": "3700000000.0000",
-            "pctChg": "-0.68"
-        },
-        # 添加更多数据，模拟60个交易日
-        {
-            "date": "2025-12-18",
-            "open": "67.8800",
-            "high": "68.5800", 
-            "low": "67.5900",
-            "close": "68.5000",
-            "volume": "56360590",
-            "amount": "3839846393.2700",
-            "pctChg": "1.23"
-        },
-        {
-            "date": "2025-12-19", 
-            "open": "68.1500",
-            "high": "68.7800",
-            "low": "67.6000",
-            "close": "68.7500",
-            "volume": "63847643", 
-            "amount": "4363697642.1000",
-            "pctChg": "0.36"
-        }
-    ]
-    
-    calculator = DynamicCalculator()
-    
-    # 大模型生成的JavaScript动态校验函数
-    functions = {
-        # 示例：近60个交易日涨停数≥2次
-        "近60日涨停数≥2次": ""
-        + "function validate(kline_data) {" 
-        + "    // 取最近60个交易日的数据" 
-        + "    const recent60 = kline_data.slice(-60);" 
-        + "    // 计算涨停次数（涨跌幅≥9.9%）" 
-        + "    let limitUpCount = 0;" 
-        + "    for (let i = 0; i < recent60.length; i++) {" 
-        + "        const pctChg = parseFloat(recent60[i].pctChg);" 
-        + "        if (pctChg >= 9.9) {" 
-        + "            limitUpCount++;" 
-        + "        }" 
-        + "    }" 
-        + "    // 返回是否满足条件" 
-        + "    return limitUpCount >= 2;" 
-        + "}",
-        
-        # 示例：最近5个交易日中至少有3天上涨
-        "近5日至少3天上涨": ""
-        + "function validate(kline_data) {" 
-        + "    const recent5 = kline_data.slice(-5);" 
-        + "    let upCount = 0;" 
-        + "    for (let i = 0; i < recent5.length; i++) {" 
-        + "        const pctChg = parseFloat(recent5[i].pctChg);" 
-        + "        if (pctChg > 0) {" 
-        + "            upCount++;" 
-        + "        }" 
-        + "    }" 
-        + "    return upCount >= 3;" 
-        + "}"
-    }
-    
-    # 批量计算
-    results = calculator.batch_evaluate(functions, kline_data)
-    
-    print("\n📊 计算结果:")
-    for name, result in results.items():
-        print(f"{name}: {result}")
+    def clear_function_cache(self):
+        """清空JavaScript函数编译缓存"""
+        global COMPILED_CONTEXT_CACHE
+        COMPILED_CONTEXT_CACHE = {}
+        print("🗑️ JavaScript函数缓存已清空")
 
 
-if __name__ == "__main__":
-    demo_dynamic_calculator()
