@@ -18,3 +18,4 @@ htmlcov/
 venv/
 env/
 ENV/
+persistent_cache/
